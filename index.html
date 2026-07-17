@@ -79,7 +79,7 @@
 
   <div id="booth">
     <video id="liveVideo" autoplay playsinline muted></video>
-    <img id="frameImg" src="custom-frame-3.png" alt="frame" />
+    <img id="frameImg" src="custom-frame-4.png" alt="frame" />
     <div id="countdown"></div>
   </div>
 
@@ -182,7 +182,7 @@
 
       // 2. Draw frame on top
       const frame = new Image();
-      frame.src = 'custom-frame-3.png';
+      frame.src = 'custom-frame-4.png';
       frame.onload = () => {
         ctx.drawImage(frame, 0, 0, FRAME_W, FRAME_H);
         const dataURL = canvas.toDataURL('image/png');
