@@ -159,20 +159,7 @@
       window.location.href = 'index.html';
     });
 
-    // Send Email via mailto (no server needed, GitHub Pages compatible)
-    //
-    // NOTE: A pure client-side email with attachment is NOT possible via mailto:
-    // because browsers don't allow attaching blobs. Instead we use a two-step approach:
-    //   1. Convert the image to a base64 data URL (already done)
-    //   2. Open mailto: with instructions – user sends from their own email client.
-    //
-    // For a real server-based send, replace the sendEmail() function with a fetch()
-    // call to your backend / email API (e.g. EmailJS, Formspree, etc.).
-    //
-    // EmailJS integration (free tier, no backend needed)
-    // To enable: sign up at https://www.emailjs.com, create a service + template,
-    // then fill in the constants below.
-    //
+    // using EmailJS to send email directly from the browser (no server needed)
     const EMAILJS_SERVICE_ID  = 'service_naqa8zl';
     const EMAILJS_TEMPLATE_ID = 'template_ff425w5';
     const EMAILJS_PUBLIC_KEY  = 'wxU_B5E6s7HHZK8uF';
