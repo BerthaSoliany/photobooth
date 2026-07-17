@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hasil Foto</title>
+  <style>
+    body {
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px;
+      box-sizing: border-box;
+      background: #f5ede3;
+      font-family: sans-serif;
+      min-height: 100vh;
+    }
+
+    h1 { margin: 0 0 12px; font-size: 1.1rem; color: #555; }
+
+    #resultImg {
+      max-width: min(400px, 90vw);
+      display: block;
+      border: 1px solid #ddd;
+    }
+
+    #controls {
+      margin-top: 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      width: min(400px, 90vw);
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      width: 100%;
+    }
+
+    button {
+      flex: 1;
+      padding: 10px 16px;
+      font-size: 1rem;
+      cursor: pointer;
+      border: 1px solid #aaa;
+      border-radius: 6px;
+      background: #fff;
+    }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Email section */
+    #emailSection {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    #emailSection label {
+      font-size: 0.9rem;
+      color: #555;
+    }
+
+    #emailInput {
+      padding: 8px 10px;
+      font-size: 1rem;
+      border: 1px solid #aaa;
+      border-radius: 6px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    #emailStatus {
+      font-size: 0.85rem;
+      color: #666;
+      min-height: 1.2em;
+    }
+    #emailStatus.success { color: green; }
+    #emailStatus.error   { color: red; }
+
+    /* Modal overlay for email sending progress */
+    #modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+    }
+    #modal.show { display: flex; }
+    #modalBox {
+      background: #fff;
+      border-radius: 10px;
+      padding: 24px 32px;
+      text-align: center;
+      font-size: 1rem;
+      max-width: 320px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Hasil Foto</h1>
+
+  <img id="resultImg" alt="Hasil foto" />
+
+  <div id="controls">
+    <div class="btn-row">
+      <button id="downloadBtn">Download</button>
+      <button id="retakeBtn">Foto Lagi</button>
+    </div>
+
+    <div id="emailSection">
+      <label for="emailInput">Kirim ke email:</label>
+      <input id="emailInput" type="email" placeholder="nama@contoh.com" />
+      <button id="sendEmailBtn">Kirim Email</button>
+      <div id="emailStatus"></div>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div id="modal">
+    <div id="modalBox" id="modalText">Mengirim email...</div>
+  </div>
+
+  <script>
+    const resultImg   = document.getElementById('resultImg');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const retakeBtn   = document.getElementById('retakeBtn');
+    const sendEmailBtn= document.getElementById('sendEmailBtn');
+    const emailInput  = document.getElementById('emailInput');
+    const emailStatus = document.getElementById('emailStatus');
+    const modal       = document.getElementById('modal');
+    const modalBox    = document.getElementById('modalBox');
+
+    // Load photo from localStorage
+    const dataURL = localStorage.getItem('photoResult');
+    if (!dataURL) {
+      alert('Tidak ada foto. Kembali ke halaman kamera.');
+      window.location.href = 'index.html';
+    } else {
+      resultImg.src = dataURL;
+      localStorage.removeItem('photoResult');
+    }
+
+    // Download
+    downloadBtn.addEventListener('click', () => {
+      const a = document.createElement('a');
+      a.href = dataURL;
+      a.download = 'photobooth.png';
+      a.click();
+    });
+
+    // Retake
+    retakeBtn.addEventListener('click', () => {
+      window.location.href = 'index.html';
+    });
+
+    // Send Email via mailto (no server needed, GitHub Pages compatible)
+    //
+    // NOTE: A pure client-side email with attachment is NOT possible via mailto:
+    // because browsers don't allow attaching blobs. Instead we use a two-step approach:
+    //   1. Convert the image to a base64 data URL (already done)
+    //   2. Open mailto: with instructions – user sends from their own email client.
+    //
+    // For a real server-based send, replace the sendEmail() function with a fetch()
+    // call to your backend / email API (e.g. EmailJS, Formspree, etc.).
+    //
+    // EmailJS integration (free tier, no backend needed)
+    // To enable: sign up at https://www.emailjs.com, create a service + template,
+    // then fill in the constants below.
+    //
+    const EMAILJS_SERVICE_ID  = 'service_naqa8zl';
+    const EMAILJS_TEMPLATE_ID = 'template_ff425w5';
+    const EMAILJS_PUBLIC_KEY  = 'wxU_B5E6s7HHZK8uF';
+    const USE_EMAILJS = EMAILJS_SERVICE_ID && EMAILJS_TEMPLATE_ID && EMAILJS_PUBLIC_KEY;
+
+    const IMGBB_API_KEY = '92b4a729b3a0d7d0295da2105a839f4c';
+
+    // Load EmailJS SDK if configured
+    if (USE_EMAILJS) {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js';
+      s.onload = () => emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+      document.head.appendChild(s);
+    }
+
+    // Compress image to JPEG for upload (smaller file = faster upload)
+    function compressForEmail(sourceDataURL) {
+      return new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => {
+          const MAX_W = 800;
+          const scale = Math.min(1, MAX_W / img.width);
+          const w = Math.round(img.width  * scale);
+          const h = Math.round(img.height * scale);
+          const c = document.createElement('canvas');
+          c.width = w; c.height = h;
+          c.getContext('2d').drawImage(img, 0, 0, w, h);
+          // strip the "data:image/jpeg;base64," prefix — imgbb wants raw base64
+          resolve(c.toDataURL('image/jpeg', 0.75).split(',')[1]);
+        };
+        img.src = sourceDataURL;
+      });
+    }
+
+    // Upload compressed image to imgbb and return the public URL
+    async function uploadToImgbb(base64Data) {
+      const form = new FormData();
+      form.append('key', IMGBB_API_KEY);
+      form.append('image', base64Data);
+      const res = await fetch('https://api.imgbb.com/1/upload', { method: 'POST', body: form });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error?.message || 'Upload gagal');
+      return json.data.url; // direct image URL
+    }
+
+    async function sendWithEmailJS(toEmail, imageDataURL) {
+      modalBox.textContent = 'Mengompres gambar...';
+      const base64 = await compressForEmail(imageDataURL);
+
+      let imageUrl;
+      if (IMGBB_API_KEY) {
+        modalBox.textContent = 'Mengupload foto...';
+        imageUrl = await uploadToImgbb(base64);
+      } else {
+        // Fallback: embed as base64 (email client mungkin tidak bisa tampilkan)
+        imageUrl = 'data:image/jpeg;base64,' + base64;
+      }
+
+      modalBox.textContent = 'Mengirim email...';
+      await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+        to_email: toEmail,
+        image_url: imageUrl, // URL publik, dipakai di template EmailJS sebagai {{image_url}}
+      });
+    }
+
+    function sendWithMailto(toEmail) {
+      // Fallback: open user's email client with instructions
+      const subject = encodeURIComponent('Hasil Photobooth');
+      const body = encodeURIComponent(
+        'Halo!\n\nBerikut adalah hasil foto dari photobooth.\n\n' +
+        'Catatan: Foto tidak dapat dilampirkan otomatis. ' +
+        'Silakan download foto terlebih dahulu lalu lampirkan secara manual.\n\n' +
+        'Terima kasih!'
+      );
+      window.location.href = `mailto:${toEmail}?subject=${subject}&body=${body}`;
+    }
+
+    sendEmailBtn.addEventListener('click', async () => {
+      const email = emailInput.value.trim();
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        emailStatus.textContent = 'Masukkan alamat email yang valid.';
+        emailStatus.className = 'error';
+        return;
+      }
+
+      if (USE_EMAILJS) {
+        // EmailJS path
+        sendEmailBtn.disabled = true;
+        modal.classList.add('show');
+        modalBox.textContent = 'Mengirim email...';
+        try {
+          await sendWithEmailJS(email, dataURL);
+          modal.classList.remove('show');
+          emailStatus.textContent = `Email berhasil dikirim ke ${email}`;
+          emailStatus.className = 'success';
+        } catch (err) {
+          modal.classList.remove('show');
+          emailStatus.textContent = 'Gagal mengirim: ' + (err.text || err.message || err);
+          emailStatus.className = 'error';
+        } finally {
+          sendEmailBtn.disabled = false;
+        }
+      } else {
+        // Mailto fallback
+        sendWithMailto(email);
+        emailStatus.textContent = 'Email client dibuka. Download foto lalu lampirkan secara manual.';
+        emailStatus.className = '';
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Photobooth Ulang Tahun Uti ke-82</title>
+  <style>
+    body {
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px;
+      box-sizing: border-box;
+      background: #f5ede3;
+      font-family: sans-serif;
+      min-height: 100vh;
+    }
+
+    h1 { margin: 0 0 10px; font-size: 1.1rem; color: #555; }
+
+    /* The booth wrapper holds video + frame overlay together */
+    #booth {
+      position: relative;
+      /* width will be set by JS to match frame display size */
+      user-select: none;
+    }
+
+    #liveVideo {
+      position: absolute;
+      /* positioned and clipped by JS to sit inside the frame slot */
+      object-fit: cover;
+      transform: scaleX(-1); /* mirror effect */
+    }
+
+    #frameImg {
+      position: relative;
+      display: block;
+      /* max width so it fits on screen */
+      max-width: min(400px, 90vw);
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    #countdown {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 5rem;
+      font-weight: bold;
+      color: white;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+      z-index: 3;
+      display: none;
+    }
+
+    #controls {
+      margin-top: 14px;
+      display: flex;
+      gap: 10px;
+    }
+
+    button {
+      padding: 10px 22px;
+      font-size: 1rem;
+      cursor: pointer;
+      border: 1px solid #aaa;
+      border-radius: 6px;
+      background: #fff;
+    }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    canvas { display: none; }
+  </style>
+</head>
+<body>
+  <h1>Photobooth</h1>
+
+  <div id="booth">
+    <video id="liveVideo" autoplay playsinline muted></video>
+    <img id="frameImg" src="custom-frame-2.png" alt="frame" />
+    <div id="countdown"></div>
+  </div>
+
+  <div id="controls">
+    <button id="captureBtn">Ambil Foto</button>
+  </div>
+
+  <canvas id="canvas"></canvas>
+
+  <script>
+    // Frame slot geometry (in the 1200×1500 native coordinate space)
+    // Photo slot inside the frame image:
+    const FRAME_W = 1200, FRAME_H = 1500;
+    const SLOT_X = 174, SLOT_Y = 265, SLOT_W = 860, SLOT_H = 980;
+
+    // Elements
+    const frameImg   = document.getElementById('frameImg');
+    const video      = document.getElementById('liveVideo');
+    const booth      = document.getElementById('booth');
+    const countdownEl= document.getElementById('countdown');
+    const captureBtn = document.getElementById('captureBtn');
+    const canvas     = document.getElementById('canvas');
+    const ctx        = canvas.getContext('2d');
+
+    // Position video inside slot
+    function positionVideo() {
+      const displayW = frameImg.offsetWidth;
+      if (!displayW) return;
+      const scale = displayW / FRAME_W;
+      const displayH = FRAME_H * scale;
+
+      booth.style.width  = displayW + 'px';
+      booth.style.height = displayH + 'px';
+
+      const slotX = SLOT_X * scale;
+      const slotY = SLOT_Y * scale;
+      const slotW = SLOT_W * scale;
+      const slotH = SLOT_H * scale;
+
+      video.style.left   = slotX + 'px';
+      video.style.top    = slotY + 'px';
+      video.style.width  = slotW + 'px';
+      video.style.height = slotH + 'px';
+    }
+
+    // Start camera
+    navigator.mediaDevices.getUserMedia({
+      video: { width: { ideal: 1920 }, height: { ideal: 1080 }, facingMode: 'user' },
+      audio: false
+    })
+    .then(stream => {
+      video.srcObject = stream;
+      video.play();
+    })
+    .catch(err => alert('Kamera tidak bisa diakses: ' + err));
+
+    frameImg.onload = positionVideo;
+    if (frameImg.complete) positionVideo();
+    window.addEventListener('resize', positionVideo);
+
+    // Countdown then capture
+    function startCountdown(cb) {
+      let n = 3;
+      countdownEl.textContent = n;
+      countdownEl.style.display = 'block';
+      const id = setInterval(() => {
+        n--;
+        if (n > 0) { countdownEl.textContent = n; }
+        else {
+          clearInterval(id);
+          countdownEl.style.display = 'none';
+          cb();
+        }
+      }, 1000);
+    }
+
+    // Capture and composite
+    function capturePhoto() {
+      canvas.width  = FRAME_W;
+      canvas.height = FRAME_H;
+
+      // 1. Draw the camera frame (mirrored) into the slot area
+      const vW = video.videoWidth, vH = video.videoHeight;
+      const slotAspect = SLOT_W / SLOT_H;
+      const vAspect    = vW / vH;
+
+      let sx, sy, sw, sh;
+      if (vAspect > slotAspect) {
+        sh = vH; sw = vH * slotAspect; sx = (vW - sw) / 2; sy = 0;
+      } else {
+        sw = vW; sh = vW / slotAspect; sx = 0; sy = (vH - sh) / 2;
+      }
+
+      // Mirror horizontally to un-do the CSS mirror on video
+      ctx.save();
+      ctx.translate(SLOT_X + SLOT_W, SLOT_Y);
+      ctx.scale(-1, 1);
+      ctx.drawImage(video, sx, sy, sw, sh, 0, 0, SLOT_W, SLOT_H);
+      ctx.restore();
+
+      // 2. Draw frame on top
+      const frame = new Image();
+      frame.src = 'custom-frame-2.png';
+      frame.onload = () => {
+        ctx.drawImage(frame, 0, 0, FRAME_W, FRAME_H);
+        const dataURL = canvas.toDataURL('image/png');
+        localStorage.setItem('photoResult', dataURL);
+        window.location.href = 'result.html';
+      };
+      if (frame.complete) frame.onload();
+    }
+
+    captureBtn.addEventListener('click', () => {
+      captureBtn.disabled = true;
+      startCountdown(() => {
+        capturePhoto();
+      });
+    });
+  </script>
+</body>
+</html>
