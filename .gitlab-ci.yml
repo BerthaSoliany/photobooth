@@ -1,3 +1,9 @@
+variables:
+  GIT_DEPTH: "1"
+  GIT_STRATEGY: "clone"
+  CI_DEBUG_TRACE: "false"
+  GIT_TERMINAL_PROMPT: "0"
+  
 stages:
   - build-and-deploy
 
@@ -18,7 +24,7 @@ deploy_job:
     - git config --global user.name "GitLab CI Bot"
     - git config --global user.email "ci-bot@gitlab-edu.itb.ac.id"
   script:
-    - echo "Checking HTML files for duplicate IDs..."
+    - echo "Deploying..."
     - '! grep -E -n "id=\"[^\"]*\"[[:space:]]+id=" *.html'
     
     # deploy ke GitHub branch production
@@ -26,6 +32,6 @@ deploy_job:
     - git checkout -B production
     - git remote remove github_origin || true
     - git remote add github_origin $GITHUB_REPO_URL
-    - git push github_origin production --force
+    - git push github_origin production --force > /dev/null 2>&1
   only:
     - main
