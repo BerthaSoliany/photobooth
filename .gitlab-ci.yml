@@ -1,8 +1,8 @@
-variables:
-  GIT_DEPTH: "1"
-  GIT_STRATEGY: "clone"
-  CI_DEBUG_TRACE: "false"
-  GIT_TERMINAL_PROMPT: "0"
+# variables:
+#   GIT_DEPTH: "1"
+#   GIT_STRATEGY: "clone"
+#   CI_DEBUG_TRACE: "false"
+#   GIT_TERMINAL_PROMPT: "0"
   
 stages:
   - build-and-deploy
@@ -10,6 +10,8 @@ stages:
 deploy_job:
   stage: build-and-deploy
   image: alpine:latest
+  tags:
+    - gitlab--duo
   before_script:
     # install git, ssh, dan grep untuk linting ringan
     - apk add --no-cache -q git openssh-client grep > /dev/null 2>&1
