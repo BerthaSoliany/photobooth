@@ -1,3 +1,7 @@
+variables:
+  FF_USE_FASTZIP: "true"
+  ARTIFACT_COMPRESSION_LEVEL: "fastest"
+
 stages:
   - lint
   - deploy
@@ -5,7 +9,7 @@ stages:
 # validation & Linting HTML/JS
 lint_job:
   stage: lint
-  image: node:18-alpine
+  image: node:20-alpine
   script:
     - npm install -g htmlhint eslint
     - npx htmlhint "*.html"
