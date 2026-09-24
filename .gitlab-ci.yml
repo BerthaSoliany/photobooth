@@ -28,8 +28,8 @@ deploy_job:
     - git config --global user.email "ci-bot@gitlab-edu.itb.ac.id"
   script:
     - echo "Linting..."
-    - if grep -E -n "id=\"[^\"]*\"[[:space:]]+id=" *.html; then echo "Duplicate ID found!"; exit 1; fi    
-
+    - grep -E -n "id=\"[^\"]*\"[[:space:]]+id=" *.html && { echo "Duplicate ID found!"; exit 1; } || echo "No duplicate IDs found."
+    
     - echo "Deploying..."
     - GITHUB_REPO_URL="git@github.com:BerthaSoliany/photobooth.git"
     - git checkout -B production
