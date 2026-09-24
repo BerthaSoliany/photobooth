@@ -12,7 +12,7 @@ deploy_job:
   image: alpine:latest
   tags:
     - gitlab--duo
-  before_script:
+  script:
     # install git, ssh, dan grep untuk linting ringan
     - apk add --no-cache -q git openssh-client grep
     - eval $(ssh-agent -s)
@@ -23,10 +23,11 @@ deploy_job:
     - printf "%s\n" "$GITHUB_DEPLOY_KEY" | tr -d '\r' > ~/.ssh/id_rsa
     - chmod 600 ~/.ssh/id_rsa
     - ssh-add ~/.ssh/id_rsa
-    - ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
+    
+    - ssh-keyscan github.com >> ~/.ssh/known_hosts || true
     - git config --global user.name "GitLab CI Bot"
     - git config --global user.email "ci-bot@gitlab-edu.itb.ac.id"
-  script:
+
     - echo "Linting..."
     - grep -E -n "id=\"[^\"]*\"[[:space:]]+id=" *.html && { echo "Duplicate ID found!"; exit 1; } || echo "No duplicate IDs found."
     
@@ -35,6 +36,6 @@ deploy_job:
     - git checkout -B production
     - git remote remove github_origin || true
     - git remote add github_origin $GITHUB_REPO_URL
-    - git push github_origin production --force > /dev/null 2>&1
+    - git push github_origin production --force
   only:
     - main
