@@ -1,0 +1,37 @@
+stages:
+  - lint
+  - deploy
+
+# validation & Linting HTML/JS
+lint_job:
+  stage: lint
+  image: node:18-alpine
+  script:
+    - npm install -g htmlhint eslint
+    - npx htmlhint "*.html"
+  allow_failure: false
+
+# push ke GitHub branch 'production' untuk GitHub Pages
+deploy_job:
+  stage: deploy
+  image: alpine:latest
+  before_script:
+    - apk add --no- contraband git openssh-client
+
+    - eval $(ssh-agent -s)
+    - echo "$GITHUB_DEPLOY_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - ssh-keyscan github.com >> ~/.ssh/known_hosts
+
+    - git config --global user.name "GitLab CI Bot"
+    - git config --global user.email "ci-bot@gitlab-edu.itb.ac.id"
+  script:
+    - GITHUB_REPO_URL="git@github.com:BerthaSoliany/photobooth.NET.git"
+    
+    # Checkout ke branch production lokal lalu force push ke GitHub
+    - git checkout -B production
+    - git remote add github_origin \(GITHUB_REPO_URL || git remote set-url github_origin\)GITHUB_REPO_URL
+    - git push github_origin production --force
+  only:
+    - main
