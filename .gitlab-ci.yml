@@ -24,8 +24,9 @@ deploy_job:
     - chmod 600 ~/.ssh/id_rsa
     - ssh-add ~/.ssh/id_rsa
     
-    - ssh-keyscan github.com >> ~/.ssh/known_hosts || true
-    - git config --global user.name "GitLab CI Bot"
+    - echo -e "Host github.com\n  Hostname ssh.github.com\n  Port 443\n  User git\n" > ~/.ssh/config
+    
+    - ssh-keyscan -p 443 ssh.github.com >> ~/.ssh/known_hosts 2>/dev/null || true    - git config --global user.name "GitLab CI Bot"
     - git config --global user.email "ci-bot@gitlab-edu.itb.ac.id"
 
     - echo "Linting..."
