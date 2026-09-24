@@ -24,7 +24,8 @@ deploy_job:
     # deploy ke GitHub branch production
     - GITHUB_REPO_URL="git@github.com:BerthaSoliany/photobooth.git"
     - git checkout -B production
-    - git remote add github_origin \(GITHUB_REPO_URL || git remote set-url github_origin\)GITHUB_REPO_URL
+    - git remote remove github_origin || true
+    - git remote add github_origin $GITHUB_REPO_URL
     - git push github_origin production --force
   only:
     - main
